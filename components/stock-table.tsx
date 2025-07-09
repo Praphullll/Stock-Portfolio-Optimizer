@@ -9,10 +9,10 @@ import { calculatePortfolio, classifyInvestor } from "@/lib/portfolio-calculatio
 
 interface StockTableProps {
   optimization: string
+  investmentAmount?: number
 }
 
-export function StockTable({ optimization }: StockTableProps) {
-  const investmentAmount = 50000
+export function StockTable({ optimization, investmentAmount = 50000 }: StockTableProps) {
   const horizon = 3
   const riskTolerance = 0.06 // 6%
   const objective = "3" // Balanced

@@ -16,6 +16,7 @@ export function Dashboard() {
   const [activeOptimization, setActiveOptimization] = useState("sharpe")
   const [isRebalancing, setIsRebalancing] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [investmentAmount, setInvestmentAmount] = useState(100000) // Default to 100k, should come from user input
 
   useEffect(() => {
     setMounted(true)
@@ -108,7 +109,7 @@ export function Dashboard() {
               </div>
             </div>
 
-            <StockTable optimization={activeOptimization} />
+            <StockTable optimization={activeOptimization} investmentAmount={investmentAmount} />
           </TabsContent>
         </Tabs>
       </div>

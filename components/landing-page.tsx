@@ -36,7 +36,7 @@ export function LandingPage() {
           style={{ animationDelay: "1s" }}
         ></div>
 
-        <div className="text-center max-w-5xl mx-auto relative z-10">
+        <div className="text-center max-w-5xl mx-auto relative z-20">
           <Badge
             variant="secondary"
             className="mb-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0 px-4 py-2 text-sm font-semibold"
@@ -59,10 +59,10 @@ export function LandingPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
             <Button
               size="lg"
-              className="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+              className="bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300 relative z-30 border-0"
               asChild
             >
-              <Link href="/auth">
+              <Link href="/auth" className="inline-flex items-center">
                 Get Started Free <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
             </Button>
@@ -316,7 +316,7 @@ export function LandingPage() {
       <section className="container mx-auto px-4 py-20">
         <Card className="bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 text-white border-0 overflow-hidden relative">
           <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-l from-blue-500 to-purple-600 rounded-full mix-blend-multiply filter blur-3xl opacity-30"></div>
-          <CardContent className="p-16 text-center relative z-10">
+          <CardContent className="p-16 text-center relative z-20">
             <Badge className="mb-6 bg-white/20 text-white border-0 backdrop-blur-sm">
               <Sparkles className="w-4 h-4 mr-2" />
               Start Your Journey
@@ -328,10 +328,10 @@ export function LandingPage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 size="lg"
-                className="bg-white text-slate-900 hover:bg-gray-100 px-8 py-4 text-lg font-semibold"
+                className="bg-white text-slate-900 hover:bg-gray-100 px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300 relative z-30 border-0"
                 asChild
               >
-                <Link href="/auth">
+                <Link href="/auth" className="inline-flex items-center">
                   Start Building Your Portfolio <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
