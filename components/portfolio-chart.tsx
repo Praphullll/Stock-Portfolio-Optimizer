@@ -60,7 +60,7 @@ export function PortfolioChart({ optimization }: PortfolioChartProps) {
     }
   }
 
-  const data = getPortfolioData(optimization)
+  const data = getPortfolioData(optimization || "sharpe")
 
   const COLORS = [
     "#0088FE",
@@ -80,7 +80,9 @@ export function PortfolioChart({ optimization }: PortfolioChartProps) {
       <Card>
         <CardHeader>
           <CardTitle>Portfolio Allocation</CardTitle>
-          <CardDescription>Asset allocation based on {optimization.toUpperCase()} optimization</CardDescription>
+          <CardDescription>
+            Asset allocation based on {(optimization || "sharpe").toUpperCase()} optimization
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-[300px] flex items-center justify-center">
@@ -95,7 +97,9 @@ export function PortfolioChart({ optimization }: PortfolioChartProps) {
     <Card>
       <CardHeader>
         <CardTitle>Portfolio Allocation</CardTitle>
-        <CardDescription>Asset allocation based on {optimization.toUpperCase()} optimization</CardDescription>
+        <CardDescription>
+          Asset allocation based on {(optimization || "sharpe").toUpperCase()} optimization
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="w-full h-[300px] bg-gray-50 rounded-lg p-4">

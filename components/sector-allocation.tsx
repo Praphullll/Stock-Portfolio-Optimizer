@@ -5,9 +5,10 @@ import { useEffect, useState } from "react"
 
 interface SectorAllocationProps {
   optimization: string
+  selectedSector?: string
 }
 
-export function SectorAllocation({ optimization }: SectorAllocationProps) {
+export function SectorAllocation({ optimization, selectedSector }: SectorAllocationProps) {
   const [isClient, setIsClient] = useState(false)
 
   useEffect(() => {
@@ -15,37 +16,41 @@ export function SectorAllocation({ optimization }: SectorAllocationProps) {
   }, [])
 
   const getSectorData = (method: string) => {
-    switch (method) {
-      case "sharpe":
-        return [
-          { sector: "Technology", allocation: 28.5 },
-          { sector: "Financial", allocation: 24.2 },
-          { sector: "Energy", allocation: 18.7 },
-          { sector: "Consumer", allocation: 15.3 },
-          { sector: "Healthcare", allocation: 8.9 },
-          { sector: "Telecom", allocation: 4.4 },
-        ]
-      case "variance":
-        return [
-          { sector: "Consumer", allocation: 32.1 },
-          { sector: "Financial", allocation: 26.8 },
-          { sector: "Technology", allocation: 19.4 },
-          { sector: "Healthcare", allocation: 12.7 },
-          { sector: "Energy", allocation: 6.2 },
-          { sector: "Telecom", allocation: 2.8 },
-        ]
-      case "hrp":
-        return [
-          { sector: "Technology", allocation: 25.6 },
-          { sector: "Financial", allocation: 23.9 },
-          { sector: "Consumer", allocation: 20.1 },
-          { sector: "Energy", allocation: 15.8 },
-          { sector: "Healthcare", allocation: 9.3 },
-          { sector: "Telecom", allocation: 5.3 },
-        ]
-      default:
-        return []
+    const allSectorData = {
+      sharpe: [
+        { sector: "Technology", allocation: 28.5 },
+        { sector: "Financial", allocation: 24.2 },
+        { sector: "Energy", allocation: 18.7 },
+        { sector: "Consumer", allocation: 15.3 },
+        { sector: "Healthcare", allocation: 8.9 },
+        { sector: "Telecom", allocation: 4.4 },
+      ],
+      variance: [
+        { sector: "Consumer", allocation: 32.1 },
+        { sector: "Financial", allocation: 26.8 },
+        { sector: "Technology", allocation: 19.4 },
+        { sector: "Healthcare", allocation: 12.7 },
+        { sector: "Energy", allocation: 6.2 },
+        { sector: "Telecom", allocation: 2.8 },
+      ],
+      hrp: [
+        { sector: "Technology", allocation: 25.6 },
+        { sector: "Financial", allocation: 23.9 },
+        { sector: "Consumer", allocation: 20.1 },
+        { sector: "Energy", allocation: 15.8 },
+        { sector: "Healthcare", allocation: 9.3 },
+        { sector: "Telecom", allocation: 5.3 },
+      ],
     }
+
+    const data = allSectorData[method as keyof typeof allSectorData] || []
+
+    // Filter by selected sector if specified
+    if (selectedSector && selectedSector !== "all") {
+      return data.filter((item) => item.sector.toLowerCase() === selectedSector.toLowerCase())
+    }
+
+    return data
   }
 
   const data = getSectorData(optimization)
@@ -55,12 +60,32 @@ export function SectorAllocation({ optimization }: SectorAllocationProps) {
       <Card>
         <CardHeader>
           <CardTitle>Sector Exposure</CardTitle>
-          <CardDescription>Diversification across different sectors</CardDescription>
+          <CardDescription>
+            {selectedSector && selectedSector !== "all"
+              ? `Allocation for ${selectedSector} sector`
+              : "Diversification across different sectors"}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-[300px] flex items-center justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (data.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Sector Exposure</CardTitle>
+          <CardDescription>
+            {selectedSector ? `No data available for ${selectedSector} sector` : "No sector data available"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px] flex items-center justify-center text-gray-500">No data to display</div>
         </CardContent>
       </Card>
     )
@@ -72,7 +97,11 @@ export function SectorAllocation({ optimization }: SectorAllocationProps) {
     <Card>
       <CardHeader>
         <CardTitle>Sector Exposure</CardTitle>
-        <CardDescription>Diversification across different sectors</CardDescription>
+        <CardDescription>
+          {selectedSector && selectedSector !== "all"
+            ? `Allocation for ${selectedSector} sector`
+            : "Diversification across different sectors"}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="w-full h-[300px] bg-gray-50 rounded-lg p-4">
@@ -94,9 +123,10 @@ export function SectorAllocation({ optimization }: SectorAllocationProps) {
 
             {/* Bars */}
             {data.map((item, index) => {
-              const barWidth = 50
+              const barWidth = data.length === 1 ? 100 : 50
               const barHeight = (item.allocation / maxValue) * 200
-              const x = 70 + index * 60
+              const spacing = data.length === 1 ? 0 : 60
+              const x = data.length === 1 ? 200 : 70 + index * spacing
               const y = 250 - barHeight
 
               return (

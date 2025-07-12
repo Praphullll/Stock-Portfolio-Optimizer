@@ -1,4 +1,4 @@
-// Portfolio calculation utilities based on the exact Python implementation
+// Portfolio calculation utilities using real stock data from CSV
 
 export interface StockData {
   ticker: string
@@ -6,6 +6,10 @@ export interface StockData {
   currentPrice: number
   expectedReturn: number
   stdDev: number
+  sharpeRatio: number
+  beta: number
+  maxDrawdown: number
+  var95: number
 }
 
 export interface PortfolioResult {
@@ -32,51 +36,242 @@ export interface AllocationData {
   percentOfInvestment: number
 }
 
-// Mock stock data with realistic Indian market data
-const mockStockData: StockData[] = [
-  { ticker: "RELIANCE.NS", sector: "Energy", currentPrice: 2456.75, expectedReturn: 0.152, stdDev: 0.082 },
-  { ticker: "TCS.NS", sector: "Technology", currentPrice: 3890.2, expectedReturn: 0.148, stdDev: 0.075 },
-  { ticker: "HDFCBANK.NS", sector: "Financial", currentPrice: 1678.45, expectedReturn: 0.135, stdDev: 0.068 },
-  { ticker: "INFY.NS", sector: "Technology", currentPrice: 1456.3, expectedReturn: 0.142, stdDev: 0.071 },
-  { ticker: "ICICIBANK.NS", sector: "Financial", currentPrice: 1234.8, expectedReturn: 0.128, stdDev: 0.065 },
-  { ticker: "HINDUNILVR.NS", sector: "Consumer", currentPrice: 2567.9, expectedReturn: 0.118, stdDev: 0.058 },
-  { ticker: "ITC.NS", sector: "Consumer", currentPrice: 456.25, expectedReturn: 0.112, stdDev: 0.055 },
-  { ticker: "SBIN.NS", sector: "Financial", currentPrice: 789.6, expectedReturn: 0.125, stdDev: 0.072 },
-  { ticker: "BHARTIARTL.NS", sector: "Telecom", currentPrice: 1123.45, expectedReturn: 0.108, stdDev: 0.063 },
-  { ticker: "WIPRO.NS", sector: "Technology", currentPrice: 567.8, expectedReturn: 0.115, stdDev: 0.069 },
-  { ticker: "LT.NS", sector: "Infrastructure", currentPrice: 3245.6, expectedReturn: 0.132, stdDev: 0.078 },
-  { ticker: "HCLTECH.NS", sector: "Technology", currentPrice: 1789.3, expectedReturn: 0.138, stdDev: 0.074 },
-  { ticker: "KOTAKBANK.NS", sector: "Financial", currentPrice: 1876.4, expectedReturn: 0.122, stdDev: 0.067 },
-  { ticker: "MARUTI.NS", sector: "Automotive", currentPrice: 10234.5, expectedReturn: 0.116, stdDev: 0.081 },
-  { ticker: "ASIANPAINT.NS", sector: "Consumer", currentPrice: 3456.8, expectedReturn: 0.109, stdDev: 0.062 },
-]
+// Real stock data will be loaded from CSV
+let realStockData: StockData[] = []
 
-// Risk-free rate (6.98% as per Python code)
+// Function to load real stock data from CSV
+async function loadRealStockData(): Promise<StockData[]> {
+  if (realStockData.length > 0) {
+    return realStockData
+  }
+
+  try {
+    const csvUrl = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Results-NKZabn7DT1PskftLucUz0WkexHyrZC.csv"
+    const response = await fetch(csvUrl)
+    const csvText = await response.text()
+
+    const lines = csvText.split("\n")
+    const headers = lines[0].split(",").map((h) => h.trim().replace(/"/g, ""))
+
+    const stocks: StockData[] = []
+
+    for (let i = 1; i < lines.length && i <= 301; i++) {
+      // Process up to 300 stocks
+      const line = lines[i].trim()
+      if (!line) continue
+
+      const values = line.split(",").map((v) => v.trim().replace(/"/g, ""))
+      if (values.length < headers.length) continue
+
+      const stock: any = {}
+      headers.forEach((header, index) => {
+        stock[header] = values[index]
+      })
+
+      if (!stock.Ticker || !stock["Current Price"] || !stock.Sector) continue
+
+      const currentPrice = Number.parseFloat(stock["Current Price"])
+      const price2030 = Number.parseFloat(stock["2030-12"])
+
+      if (isNaN(currentPrice) || isNaN(price2030) || currentPrice <= 0) continue
+
+      // Calculate annualized return (5 years)
+      const totalReturn = (price2030 - currentPrice) / currentPrice
+      const annualizedReturn = Math.pow(1 + totalReturn, 1 / 5) - 1
+
+      const volatility = Number.parseFloat(stock["Std Dev (%)"]) / 100 || 0.15
+      const sharpeRatio = Number.parseFloat(stock["Sharpe Ratio"]) || 0
+      const beta = Number.parseFloat(stock["Beta"]) || 1
+      const maxDrawdown = Math.abs(Number.parseFloat(stock["Max Drawdown (%)"]) / 100) || 0.2
+
+      // Normalize sector names
+      const sectorMap: { [key: string]: string } = {
+        "consumer service": "consumer",
+        "consumer goods": "consumer",
+        "consumer staples": "consumer",
+        "consumer discretionary": "consumer",
+        "information technology": "technology",
+        it: "technology",
+        software: "technology",
+        "financial services": "financial",
+        banking: "financial",
+        insurance: "financial",
+        "oil & gas": "energy",
+        energy: "energy",
+        utilities: "energy",
+        healthcare: "healthcare",
+        pharmaceuticals: "healthcare",
+        biotechnology: "healthcare",
+        telecommunications: "telecom",
+        telecom: "telecom",
+        industrials: "industrial",
+        manufacturing: "industrial",
+        materials: "materials",
+        "real estate": "realestate",
+      }
+
+      let normalizedSector = stock.Sector.toLowerCase().trim()
+      normalizedSector = sectorMap[normalizedSector] || normalizedSector.replace(/\s+/g, "")
+
+      const processedStock: StockData = {
+        ticker: stock.Ticker,
+        sector: normalizedSector,
+        currentPrice: currentPrice,
+        expectedReturn: annualizedReturn,
+        stdDev: volatility,
+        sharpeRatio: sharpeRatio,
+        beta: beta,
+        maxDrawdown: maxDrawdown,
+        var95: Math.abs(Number.parseFloat(stock["VaR (95%)"]) / 100) || 0.05,
+      }
+
+      // Filter for reasonable stocks
+      if (
+        processedStock.expectedReturn > -0.5 &&
+        processedStock.expectedReturn < 2.0 &&
+        processedStock.stdDev > 0 &&
+        processedStock.stdDev < 1.0
+      ) {
+        stocks.push(processedStock)
+      }
+    }
+
+    realStockData = stocks
+    return stocks
+  } catch (error) {
+    console.error("Error loading real stock data:", error)
+    // Fallback to mock data if CSV fails
+    return getMockStockData()
+  }
+}
+
+// Fallback mock data
+function getMockStockData(): StockData[] {
+  return [
+    {
+      ticker: "RELIANCE.NS",
+      sector: "energy",
+      currentPrice: 2456.75,
+      expectedReturn: 0.152,
+      stdDev: 0.082,
+      sharpeRatio: 1.85,
+      beta: 1.2,
+      maxDrawdown: 0.15,
+      var95: 0.08,
+    },
+    {
+      ticker: "TCS.NS",
+      sector: "technology",
+      currentPrice: 3890.2,
+      expectedReturn: 0.148,
+      stdDev: 0.075,
+      sharpeRatio: 1.97,
+      beta: 0.9,
+      maxDrawdown: 0.12,
+      var95: 0.07,
+    },
+    {
+      ticker: "HDFCBANK.NS",
+      sector: "financial",
+      currentPrice: 1678.45,
+      expectedReturn: 0.135,
+      stdDev: 0.068,
+      sharpeRatio: 1.99,
+      beta: 1.1,
+      maxDrawdown: 0.14,
+      var95: 0.06,
+    },
+    {
+      ticker: "INFY.NS",
+      sector: "technology",
+      currentPrice: 1456.3,
+      expectedReturn: 0.142,
+      stdDev: 0.071,
+      sharpeRatio: 2.0,
+      beta: 0.85,
+      maxDrawdown: 0.11,
+      var95: 0.065,
+    },
+    {
+      ticker: "ICICIBANK.NS",
+      sector: "financial",
+      currentPrice: 1234.8,
+      expectedReturn: 0.128,
+      stdDev: 0.065,
+      sharpeRatio: 1.97,
+      beta: 1.15,
+      maxDrawdown: 0.13,
+      var95: 0.058,
+    },
+    {
+      ticker: "HINDUNILVR.NS",
+      sector: "consumer",
+      currentPrice: 2567.9,
+      expectedReturn: 0.118,
+      stdDev: 0.058,
+      sharpeRatio: 2.03,
+      beta: 0.7,
+      maxDrawdown: 0.09,
+      var95: 0.05,
+    },
+    {
+      ticker: "ITC.NS",
+      sector: "consumer",
+      currentPrice: 456.25,
+      expectedReturn: 0.112,
+      stdDev: 0.055,
+      sharpeRatio: 2.04,
+      beta: 0.65,
+      maxDrawdown: 0.08,
+      var95: 0.048,
+    },
+    {
+      ticker: "SBIN.NS",
+      sector: "financial",
+      currentPrice: 789.6,
+      expectedReturn: 0.125,
+      stdDev: 0.072,
+      sharpeRatio: 1.74,
+      beta: 1.3,
+      maxDrawdown: 0.16,
+      var95: 0.07,
+    },
+    {
+      ticker: "BHARTIARTL.NS",
+      sector: "telecom",
+      currentPrice: 1123.45,
+      expectedReturn: 0.108,
+      stdDev: 0.063,
+      sharpeRatio: 1.71,
+      beta: 0.8,
+      maxDrawdown: 0.12,
+      var95: 0.055,
+    },
+    {
+      ticker: "WIPRO.NS",
+      sector: "technology",
+      currentPrice: 567.8,
+      expectedReturn: 0.115,
+      stdDev: 0.069,
+      sharpeRatio: 1.67,
+      beta: 0.9,
+      maxDrawdown: 0.13,
+      var95: 0.062,
+    },
+  ]
+}
+
+// Risk-free rate (6.98% as per Indian government bonds)
 const RISK_FREE_RATE = 0.0698
 
-// VaR calculation using parametric method (exact from Python)
+// VaR calculation using parametric method
 export function calculateVaR(investment: number, portReturn: number, portRisk: number, confidenceLevel = 0.95): number {
-  // Using norm.ppf(1 - confidence_level) equivalent
-  const zScore = confidenceLevel === 0.95 ? -1.6449 : -2.3263 // 95% and 99% confidence levels
+  const zScore = confidenceLevel === 0.95 ? -1.6449 : -2.3263
   const var95 = investment * (portReturn + zScore * portRisk)
   return Math.abs(var95)
 }
 
-// Compute covariance matrix (diagonal matrix as per Python: np.diag(std_devs ** 2))
-function computeCovMatrix(stdDevs: number[]): number[][] {
-  const n = stdDevs.length
-  const covMatrix: number[][] = Array(n)
-    .fill(null)
-    .map(() => Array(n).fill(0))
-
-  for (let i = 0; i < n; i++) {
-    covMatrix[i][i] = stdDevs[i] ** 2
-  }
-
-  return covMatrix
-}
-
-// Matrix operations (exact implementations from Python)
+// Matrix operations
 function dotProduct(a: number[], b: number[]): number {
   return a.reduce((sum, val, i) => sum + val * b[i], 0)
 }
@@ -85,50 +280,58 @@ function matrixVectorMultiply(matrix: number[][], vector: number[]): number[] {
   return matrix.map((row) => dotProduct(row, vector))
 }
 
-// Portfolio risk calculation: np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
 function calculatePortfolioRisk(weights: number[], covMatrix: number[][]): number {
   const temp = matrixVectorMultiply(covMatrix, weights)
   return Math.sqrt(dotProduct(weights, temp))
 }
 
-// Minimum variance portfolio optimization (simplified but mathematically equivalent)
+// Compute covariance matrix using correlation estimates
+function computeCovMatrix(stdDevs: number[], correlations?: number[][]): number[][] {
+  const n = stdDevs.length
+  const covMatrix: number[][] = Array(n)
+    .fill(null)
+    .map(() => Array(n).fill(0))
+
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      if (i === j) {
+        covMatrix[i][j] = stdDevs[i] ** 2
+      } else {
+        // Use estimated correlation (0.3 for same sector, 0.1 for different sectors)
+        const correlation = correlations ? correlations[i][j] : 0.15
+        covMatrix[i][j] = correlation * stdDevs[i] * stdDevs[j]
+      }
+    }
+  }
+
+  return covMatrix
+}
+
+// Portfolio optimization algorithms
 function minimumVariancePortfolio(covMatrix: number[][]): number[] {
   const n = covMatrix.length
-
-  // Simplified implementation: inverse volatility weighting
   const invVol = covMatrix.map((_, i) => 1 / Math.sqrt(covMatrix[i][i]))
   const totalInvVol = invVol.reduce((sum, iv) => sum + iv, 0)
-
   return invVol.map((iv) => iv / totalInvVol)
 }
 
-// Sharpe ratio portfolio optimization (simplified but mathematically equivalent)
 function sharpeRatioPortfolio(returns: number[], covMatrix: number[], riskFreeRate: number): number[] {
   const n = returns.length
-
-  // Calculate excess return to volatility ratio for each asset
   const excessReturnToVol = returns.map((ret, i) => (ret - riskFreeRate) / Math.sqrt(covMatrix[i][i]))
-
-  // Normalize positive ratios to get weights
   const positiveRatios = excessReturnToVol.map((ratio) => Math.max(0, ratio))
   const totalRatio = positiveRatios.reduce((sum, ratio) => sum + ratio, 0)
 
   if (totalRatio === 0) {
-    return Array(n).fill(1 / n) // Equal weights if no positive ratios
+    return Array(n).fill(1 / n)
   }
 
   return positiveRatios.map((ratio) => ratio / totalRatio)
 }
 
-// HRP allocation (simplified hierarchical risk parity)
 function hrpAllocation(covMatrix: number[][]): number[] {
   const n = covMatrix.length
-
-  // Simplified HRP: equal risk contribution approach
   const invVol = covMatrix.map((_, i) => 1 / Math.sqrt(covMatrix[i][i]))
   const totalInvVol = invVol.reduce((sum, iv) => sum + iv, 0)
-
-  // Apply hierarchical adjustment (simplified)
   const baseWeights = invVol.map((iv) => iv / totalInvVol)
 
   // Risk budgeting adjustment
@@ -138,7 +341,6 @@ function hrpAllocation(covMatrix: number[][]): number[] {
   return baseWeights.map((w, i) => (w * (1 / riskContrib[i]) * totalRisk) / n)
 }
 
-// Adjust zero allocation (exact from Python)
 function adjustZeroAllocation(weights: number[]): number[] {
   const minAllocation = 0.01
   const adjustedWeights = weights.map((w) => Math.max(w, minAllocation))
@@ -146,32 +348,21 @@ function adjustZeroAllocation(weights: number[]): number[] {
   return adjustedWeights.map((w) => w / weightSum)
 }
 
-// Calculate allocations with reinvestment logic (exact from Python)
 function calculateAllocations(
   weights: number[],
   investment: number,
   stockData: StockData[],
 ): { allocations: AllocationData[]; remainingAmount: number } {
-  // Adjust weights to ensure minimum allocation
   const adjustedWeights = adjustZeroAllocation(weights)
-
-  // Calculate allocation amounts: weights * investment
   const allocAmounts = adjustedWeights.map((w) => w * investment)
-
-  // Calculate quantities: np.floor(alloc_amounts / current_prices).astype(int)
   const quantities = allocAmounts.map((amount, i) => Math.floor(amount / stockData[i].currentPrice))
-
-  // Calculate used amounts: quantities * current_prices
   const usedAmounts = quantities.map((qty, i) => qty * stockData[i].currentPrice)
 
-  // Calculate remaining amount: investment - np.sum(used_amounts)
   let remainingAmount = investment - usedAmounts.reduce((sum, amount) => sum + amount, 0)
-
-  // Reinvestment logic: while remaining_amount >= min(current_prices)
   const currentPrices = stockData.map((stock) => stock.currentPrice)
 
+  // Reinvestment logic
   while (remainingAmount >= Math.min(...currentPrices)) {
-    // Sort by price (cheapest first): np.argsort(current_prices)
     const priceIndices = currentPrices.map((price, i) => ({ price, index: i })).sort((a, b) => a.price - b.price)
 
     let invested = false
@@ -187,10 +378,8 @@ function calculateAllocations(
     if (!invested) break
   }
 
-  // Calculate percent invested: used_amounts / investment * 100
   const percentInvested = usedAmounts.map((amount) => (amount / investment) * 100)
 
-  // Create allocation dataframe equivalent
   const allocations: AllocationData[] = stockData
     .map((stock, i) => ({
       ticker: stock.ticker,
@@ -202,17 +391,15 @@ function calculateAllocations(
       amountUsed: usedAmounts[i],
       percentOfInvestment: percentInvested[i],
     }))
-    .filter((alloc) => alloc.amountUsed > 0) // Filter out zero allocations
-    .sort((a, b) => b.amountUsed - a.amountUsed) // Sort by amount used (descending)
+    .filter((alloc) => alloc.amountUsed > 0)
+    .sort((a, b) => b.amountUsed - a.amountUsed)
 
   return { allocations, remainingAmount }
 }
 
-// Calculate sector exposure (exact from Python)
 function calculateSectorExposure(allocations: AllocationData[], investment: number): { [sector: string]: number } {
   const sectorTotals: { [sector: string]: number } = {}
 
-  // Group by sector and sum amounts: alloc_df.groupby("Sector")["Amount Used (₹)"].sum()
   allocations.forEach((alloc) => {
     if (!sectorTotals[alloc.sector]) {
       sectorTotals[alloc.sector] = 0
@@ -220,7 +407,6 @@ function calculateSectorExposure(allocations: AllocationData[], investment: numb
     sectorTotals[alloc.sector] += alloc.amountUsed
   })
 
-  // Convert to percentages: / investment * 100
   const sectorExposure: { [sector: string]: number } = {}
   Object.keys(sectorTotals).forEach((sector) => {
     sectorExposure[sector] = (sectorTotals[sector] / investment) * 100
@@ -229,7 +415,6 @@ function calculateSectorExposure(allocations: AllocationData[], investment: numb
   return sectorExposure
 }
 
-// Generate insight based on Sharpe ratio (exact from Python)
 function generateInsight(sharpeRatio: number): string {
   if (sharpeRatio > 1.5) {
     return "Excellent risk-adjusted return. Strong portfolio."
@@ -240,14 +425,30 @@ function generateInsight(sharpeRatio: number): string {
   }
 }
 
-// Main portfolio calculation function (exact implementation from show_results)
-export function calculatePortfolio(
+// Main portfolio calculation function
+export async function calculatePortfolio(
   method: "sharpe" | "variance" | "hrp",
   investment: number,
   horizon = 3,
-): PortfolioResult {
-  // Select top 15 stocks by expected return (as per Python: head(15))
-  const stockData = mockStockData.sort((a, b) => b.expectedReturn - a.expectedReturn).slice(0, 15)
+  selectedSector?: string,
+): Promise<PortfolioResult> {
+  // Load real stock data
+  let stockData = await loadRealStockData()
+
+  // Filter by sector if specified
+  if (selectedSector && selectedSector !== "all") {
+    stockData = stockData.filter((stock) => stock.sector === selectedSector)
+  }
+
+  // Select top stocks by Sharpe ratio (limit to 50 for performance)
+  stockData = stockData
+    .filter((stock) => stock.sharpeRatio > 0)
+    .sort((a, b) => b.sharpeRatio - a.sharpeRatio)
+    .slice(0, 50)
+
+  if (stockData.length === 0) {
+    throw new Error("No suitable stocks found for the selected criteria")
+  }
 
   const returns = stockData.map((stock) => stock.expectedReturn)
   const stdDevs = stockData.map((stock) => stock.stdDev)
@@ -269,17 +470,15 @@ export function calculatePortfolio(
       weights = sharpeRatioPortfolio(returns, covMatrix, RISK_FREE_RATE)
   }
 
-  // Adjust weights for minimum allocation
   const adjustedWeights = adjustZeroAllocation(weights)
 
-  // Calculate portfolio metrics (exact from Python)
-  const expectedReturn = dotProduct(adjustedWeights, returns) // np.dot(weights, returns)
-  const portfolioRisk = calculatePortfolioRisk(adjustedWeights, covMatrix) // np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
-  const sharpeRatio = (expectedReturn - RISK_FREE_RATE) / portfolioRisk // (port_return - risk_free_rate) / port_risk
-  const var95 = calculateVaR(investment, expectedReturn, portfolioRisk, 0.95) // calculate_var function
-  const projectedValue = investment * Math.pow(1 + expectedReturn, horizon) // investment * ((1 + port_return) ** horizon)
+  // Calculate portfolio metrics
+  const expectedReturn = dotProduct(adjustedWeights, returns)
+  const portfolioRisk = calculatePortfolioRisk(adjustedWeights, covMatrix)
+  const sharpeRatio = (expectedReturn - RISK_FREE_RATE) / portfolioRisk
+  const var95 = calculateVaR(investment, expectedReturn, portfolioRisk, 0.95)
+  const projectedValue = investment * Math.pow(1 + expectedReturn, horizon)
 
-  // Calculate allocations and sector exposure
   const { allocations, remainingAmount } = calculateAllocations(adjustedWeights, investment, stockData)
   const sectorExposure = calculateSectorExposure(allocations, investment)
   const insight = generateInsight(sharpeRatio)
@@ -298,7 +497,7 @@ export function calculatePortfolio(
   }
 }
 
-// Investor classification (exact from Python)
+// Investor classification
 export function classifyInvestor(horizon: number, riskTolerance: number, objective: string): string {
   if (riskTolerance >= 0.08 && horizon >= 4 && objective === "1") {
     return "Aggressive Investor"

@@ -47,6 +47,9 @@ export function PortfolioBuilder() {
 
     setIsLoading(true)
 
+    // Store investment amount for dashboard
+    localStorage.setItem("investmentAmount", investmentAmount.toString())
+
     // Simulate portfolio creation
     setTimeout(() => {
       setIsLoading(false)
@@ -108,7 +111,7 @@ export function PortfolioBuilder() {
                     placeholder="John Doe"
                     defaultValue="John Doe"
                     required
-                    className="border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 h-12 text-slate-700"
+                    className="border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 h-12 text-slate-700 bg-black text-white placeholder:text-gray-400"
                   />
                 </div>
 
@@ -117,20 +120,20 @@ export function PortfolioBuilder() {
                     Investment Amount (INR)
                   </Label>
                   <div className="relative">
-                    <IndianRupee className="absolute left-4 top-4 h-5 w-5 text-slate-500" />
+                    <IndianRupee className="absolute left-4 top-4 h-5 w-5 text-gray-400" />
                     <Input
                       id="amount"
                       type="number"
-                      placeholder="50,000"
+                      placeholder="Enter Amount"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
-                      className="pl-12 border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 h-14 text-slate-700 text-lg"
+                      className="pl-12 border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 h-14 text-lg bg-black text-white placeholder:text-gray-400"
                       min="1000"
                       required
                     />
                   </div>
                   <p className="text-sm text-slate-500 bg-blue-50 p-3 rounded-lg border border-blue-200">
-                    💡 Minimum investment: ₹1,000 • Recommended: ₹50,000 or more for better diversification
+                    💡 Minimum investment: ₹1,000 • Enter your desired investment amount
                   </p>
                 </div>
 
@@ -172,34 +175,34 @@ export function PortfolioBuilder() {
                     Investment Objective
                   </Label>
                   <Select required>
-                    <SelectTrigger className="border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 h-12">
+                    <SelectTrigger className="border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 h-12 bg-black text-white">
                       <SelectValue placeholder="Select your investment objective" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="growth">
+                    <SelectContent className="bg-black text-white border-slate-600">
+                      <SelectItem value="growth" className="hover:bg-slate-800">
                         <div className="flex items-center py-2">
                           <TrendingUp className="h-5 w-5 mr-3 text-emerald-600" />
                           <div>
                             <div className="font-semibold">Growth</div>
-                            <div className="text-sm text-slate-600">Focus on capital appreciation</div>
+                            <div className="text-sm text-slate-400">Focus on capital appreciation</div>
                           </div>
                         </div>
                       </SelectItem>
-                      <SelectItem value="income">
+                      <SelectItem value="income" className="hover:bg-slate-800">
                         <div className="flex items-center py-2">
                           <IndianRupee className="h-5 w-5 mr-3 text-blue-600" />
                           <div>
                             <div className="font-semibold">Income</div>
-                            <div className="text-sm text-slate-600">Focus on dividend yield</div>
+                            <div className="text-sm text-slate-400">Focus on dividend yield</div>
                           </div>
                         </div>
                       </SelectItem>
-                      <SelectItem value="balanced">
+                      <SelectItem value="balanced" className="hover:bg-slate-800">
                         <div className="flex items-center py-2">
                           <Target className="h-5 w-5 mr-3 text-purple-600" />
                           <div>
                             <div className="font-semibold">Balanced</div>
-                            <div className="text-sm text-slate-600">Mix of growth and income</div>
+                            <div className="text-sm text-slate-400">Mix of growth and income</div>
                           </div>
                         </div>
                       </SelectItem>
@@ -212,15 +215,25 @@ export function PortfolioBuilder() {
                     Holding Period
                   </Label>
                   <Select required>
-                    <SelectTrigger className="border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 h-12">
+                    <SelectTrigger className="border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 h-12 bg-black text-white">
                       <SelectValue placeholder="Select holding period" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1 Year</SelectItem>
-                      <SelectItem value="2">2 Years</SelectItem>
-                      <SelectItem value="3">3 Years (Recommended)</SelectItem>
-                      <SelectItem value="4">4 Years</SelectItem>
-                      <SelectItem value="5">5+ Years</SelectItem>
+                    <SelectContent className="bg-black text-white border-slate-600">
+                      <SelectItem value="1" className="hover:bg-slate-800">
+                        1 Year
+                      </SelectItem>
+                      <SelectItem value="2" className="hover:bg-slate-800">
+                        2 Years
+                      </SelectItem>
+                      <SelectItem value="3" className="hover:bg-slate-800">
+                        3 Years (Recommended)
+                      </SelectItem>
+                      <SelectItem value="4" className="hover:bg-slate-800">
+                        4 Years
+                      </SelectItem>
+                      <SelectItem value="5" className="hover:bg-slate-800">
+                        5+ Years
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
